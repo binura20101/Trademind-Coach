@@ -15,6 +15,7 @@ const webUrlInput = document.getElementById('webUrlInput');
 const webOutput = document.getElementById('webOutput');
 const dashboard = document.getElementById('dashboard');
 const statusBar = document.getElementById('statusBar');
+const resetMemoryButton = document.getElementById('resetMemoryButton');
 
 const STORAGE_KEY = 'tradeMindNotes';
 const topics = ['Risk Management', 'Trend Following', 'RSI', 'Position Sizing', 'News Trading'];
@@ -50,7 +51,11 @@ function loadNotes() {
 }
 
 function saveNotes() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
+  } catch (error) {
+    console.warn('Could not save notes to storage:', error);
+  }
 }
 
 function renderNotes() {
@@ -98,7 +103,7 @@ function rememberLearning(noteText, source) {
 
   const exists = notes.some((note) => note.text === cleanNote);
   if (!exists) {
-    notes.unshift({ text: cleanNote, source });
+    notes.unshift({ text: cleanNote, source: source || 'Local insight' });
     if (notes.length > 16) {
       notes = notes.slice(0, 16);
     }
@@ -106,6 +111,15 @@ function rememberLearning(noteText, source) {
     renderNotes();
     renderDashboard();
   }
+}
+
+function clearMemory() {
+  notes = [];
+  saveNotes();
+  renderNotes();
+  renderDashboard();
+  addMessage('My memory has been cleared. I will rebuild it from your next insight or research run.', 'bot');
+  setStatus('Autonomous mode: memory cleared', false);
 }
 
 function seedStarterNotes() {
@@ -120,7 +134,8 @@ function seedStarterNotes() {
     'Position sizing: size trades to protect the account, not to chase gains.'
   ];
 
-  notes = starters.map((text) => ({ text }));
+  notes = [];
+  starters.forEach((text) => rememberLearning(text));
   saveNotes();
   renderNotes();
   renderDashboard();
@@ -237,14 +252,16 @@ function selfHealUi() {
   }
   if (!chatMessages.children.length) {
     issues.push('Chat empty');
+    addMessage('I am ready to learn from your trading notes, public web pages, and generate research-based trading signals. My memory will grow as I learn.', 'bot');
   }
   if (!document.querySelector('.topic-pill')) {
     issues.push('Topic pills missing');
+    setupPills();
   }
   if (issues.length) {
-    setStatus(`Self-healing: ${issues.join(', ')}`);
+    setStatus(`Self-healing: ${issues.join(', ')}`, false);
   } else {
-    setStatus('Self-healing: UI stable');
+    setStatus('Self-healing: UI stable', true);
   }
 }
 
@@ -363,16 +380,17 @@ noteForm.addEventListener('submit', (event) => {
   const text = noteInput.value.trim();
   if (!text) return;
 
-  notes.unshift({ text });
-  saveNotes();
-  renderNotes();
-  renderDashboard();
+  rememberLearning(text, 'Local insight');
   noteInput.value = '';
   addMessage(`Saved a trading insight: ${text}`, 'bot');
 });
 
 seedButton.addEventListener('click', seedStarterNotes);
 autoResearchButton.addEventListener('click', () => {
+  runAutoResearch();
+});
+resetMemoryButton.addEventListener('click', () => {
+  clearMemory();
   runAutoResearch();
 });
 
