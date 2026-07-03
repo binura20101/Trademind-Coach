@@ -156,6 +156,32 @@ h1, h2, h3 { margin: 0 0 8px; }
 
 .dashboard { display: grid; gap: 8px; }
 
+.agent-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.metric-chip {
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: rgba(57, 208, 255, 0.14);
+  border: 1px solid rgba(57, 208, 255, 0.22);
+  color: #dff7ff;
+  font-size: 0.9rem;
+}
+
+.agent-insight {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(125, 112, 255, 0.14);
+  border: 1px solid rgba(125, 112, 255, 0.22);
+  color: #e8e7ff;
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+
 .dashboard-item {
   padding: 10px 12px;
   border-radius: 12px;

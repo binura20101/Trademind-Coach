@@ -18,6 +18,7 @@ const statusBar = document.getElementById('statusBar');
 const resetMemoryButton = document.getElementById('resetMemoryButton');
 
 const STORAGE_KEY = 'tradeMindNotes';
+const STATE_KEY = 'tradeMindState';
 const topics = ['Risk Management', 'Trend Following', 'RSI', 'Position Sizing', 'News Trading'];
 const autoResearchSources = [
   { name: 'Reuters', url: 'https://www.reuters.com/world/' },
@@ -27,6 +28,57 @@ const autoResearchSources = [
 let notes = [];
 let autoRefreshTimer = null;
 let selfHealingCounter = 0;
+let agentState = {
+  researchCount: 0,
+  refreshCount: 0,
+  lastAction: 'standby',
+  lastUpdated: null
+};
+
+function loadAgentState() {
+  try {
+    const raw = localStorage.getItem(STATE_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    agentState = { ...agentState, ...parsed };
+  } catch {
+    agentState = { ...agentState };
+  }
+}
+
+function saveAgentState() {
+  try {
+    localStorage.setItem(STATE_KEY, JSON.stringify(agentState));
+  } catch (error) {
+    console.warn('Could not save agent state:', error);
+  }
+}
+
+function updateAgentState(patch) {
+  agentState = { ...agentState, ...patch };
+  saveAgentState();
+}
+
+function buildAgentInsight() {
+  if (!notes.length) {
+    return 'No memory yet. Add notes or run auto research to build a stronger trading edge.';
+  }
+
+  const themes = [];
+  if (notes.some((note) => /risk|position|size|capital/i.test(note.text))) {
+    themes.push('risk discipline');
+  }
+  if (notes.some((note) => /trend|momentum|breakout|pullback|retest/i.test(note.text))) {
+    themes.push('trend structure');
+  }
+  if (notes.some((note) => /news|volatility|event/i.test(note.text))) {
+    themes.push('event-driven setups');
+  }
+
+  const themeLabel = themes.length ? themes.join(' • ') : 'price action context';
+  const recent = notes[0].text.length > 110 ? `${notes[0].text.slice(0, 110)}...` : notes[0].text;
+  return `Current edge: ${themeLabel}. Latest note: ${recent}`;
+}
 
 function addMessage(text, sender) {
   const message = document.createElement('div');
@@ -78,8 +130,20 @@ function renderNotes() {
 
 function renderDashboard() {
   dashboard.innerHTML = '';
+
+  const metrics = `
+    <div class="agent-metrics">
+      <div class="metric-chip">Memory ${notes.length}/16</div>
+      <div class="metric-chip">Research ${agentState.researchCount}</div>
+      <div class="metric-chip">Refresh ${agentState.refreshCount}</div>
+    </div>
+  `;
+
+  dashboard.insertAdjacentHTML('beforeend', metrics);
+  dashboard.insertAdjacentHTML('beforeend', `<div class="agent-insight">${buildAgentInsight()}</div>`);
+
   if (!notes.length) {
-    dashboard.innerHTML = '<div class="dashboard-item">No research memory yet.</div>';
+    dashboard.insertAdjacentHTML('beforeend', '<div class="dashboard-item">No research memory yet.</div>');
     return;
   }
 
@@ -110,6 +174,7 @@ function rememberLearning(noteText, source) {
     saveNotes();
     renderNotes();
     renderDashboard();
+    updateAgentState({ lastAction: 'Memory updated', lastUpdated: new Date().toLocaleTimeString() });
   }
 }
 
@@ -119,6 +184,7 @@ function clearMemory() {
   renderNotes();
   renderDashboard();
   addMessage('My memory has been cleared. I will rebuild it from your next insight or research run.', 'bot');
+  updateAgentState({ lastAction: 'Memory cleared', lastUpdated: new Date().toLocaleTimeString() });
   setStatus('Autonomous mode: memory cleared', false);
 }
 
@@ -139,6 +205,7 @@ function seedStarterNotes() {
   saveNotes();
   renderNotes();
   renderDashboard();
+  updateAgentState({ lastAction: 'Starter notes loaded', lastUpdated: new Date().toLocaleTimeString() });
   addMessage('Starter trading notes loaded. I can now help you research setups using this knowledge.', 'bot');
 }
 
@@ -214,6 +281,7 @@ async function runAutoResearch() {
 
   if (!saved.length) {
     webOutput.textContent = 'The research scan did not collect fresh content. Try a direct URL or another public page.';
+    updateAgentState({ lastAction: 'Research scan failed', lastUpdated: new Date().toLocaleTimeString() });
     addMessage('The autonomous research scan did not collect fresh content.', 'bot');
     return;
   }
@@ -223,6 +291,7 @@ async function runAutoResearch() {
   const summary = saved.slice(0, 3).map((item) => `- ${item.source}`).join('\n');
   webOutput.textContent = `Autonomous research complete. I collected ${saved.length} fresh context notes from public market sources.`;
   setStatus('Autonomous mode: memory refreshed and ready');
+  updateAgentState({ researchCount: agentState.researchCount + 1, lastAction: 'Auto research complete', lastUpdated: new Date().toLocaleTimeString() });
   addMessage(`Autonomous research complete. I collected ${saved.length} fresh context notes.\n${summary}`, 'bot');
 }
 
@@ -230,6 +299,7 @@ function startAutoRefresh() {
   if (autoRefreshTimer) return;
   autoRefreshTimer = window.setInterval(() => {
     selfHealingCounter += 1;
+    updateAgentState({ refreshCount: agentState.refreshCount + 1, lastAction: 'Refresh cycle', lastUpdated: new Date().toLocaleTimeString() });
     selfHealUi();
     setStatus(`Autonomous mode: refreshed ${selfHealingCounter} time(s)`);
     if (selfHealingCounter % 3 === 0) {
@@ -272,34 +342,49 @@ function generateTradingSignal(query) {
   let bias = 'Neutral';
   let signalType = 'Trend-following';
   let confidence = 0.62;
+  let plan = 'Wait for confirmation from price action and keep risk small.';
+  const triggers = [];
 
   if (input.includes('bull') || input.includes('breakout') || input.includes('uptrend') || input.includes('long')) {
     bias = 'Bullish';
     confidence += 0.08;
+    triggers.push('momentum confirmation');
   } else if (input.includes('bear') || input.includes('downtrend') || input.includes('short')) {
     bias = 'Bearish';
     confidence += 0.08;
+    triggers.push('breakdown confirmation');
   }
 
   if (input.includes('breakout')) {
     signalType = 'Breakout';
+    plan = 'Enter on a retest or strong follow-through with a tight stop.';
+    triggers.push('breakout trigger');
   } else if (input.includes('pullback') || input.includes('retest')) {
     signalType = 'Pullback';
+    plan = 'Look for a pullback into structure and only enter if the setup is still valid.';
+    triggers.push('retest support');
   } else if (input.includes('news')) {
     signalType = 'News reaction';
+    plan = 'Trade only if the move is clean and the risk is controlled.';
+    triggers.push('news volatility');
   } else if (input.includes('reversal') || input.includes('mean')) {
     signalType = 'Mean reversion';
+    plan = 'Wait for a reversal confirmation and avoid forcing the trade.';
+    triggers.push('reversal confirmation');
   }
 
   if (relevant.length) {
-    confidence = Math.min(0.92, confidence + relevant.length * 0.06);
+    confidence = Math.min(0.95, confidence + relevant.length * 0.05);
+  }
+  if (notes.some((note) => /risk|position|size|capital/i.test(note.text))) {
+    plan += ' Respect your max risk and size the trade conservatively.';
   }
 
   const context = relevant.length
-    ? relevant.map((note) => `- ${note.text}`).join('\n')
+    ? relevant.slice(0, 3).map((note) => `- ${note.text}`).join('\n')
     : '- No matching notes yet. Add more trading ideas to improve the signal.';
 
-  return `Signal: ${bias}\nType: ${signalType}\nConfidence: ${(confidence * 100).toFixed(0)}%\nPlan:\n- Entry: wait for a clear trigger and confirm the move.\n- Stop: place risk according to your max loss rule.\n- Target: aim for at least 2:1 reward-to-risk.\nContext from your notes:\n${context}`;
+  return `Signal: ${bias}\nType: ${signalType}\nConfidence: ${(confidence * 100).toFixed(0)}%\nPlan:\n- ${plan}\n- Trigger: ${triggers.length ? triggers.join(' + ') : 'wait for a clean setup'}\n- Risk: keep size small and protect the account.\nContext from your notes:\n${context}`;
 }
 
 function buildResponse(text) {
@@ -316,7 +401,7 @@ function buildResponse(text) {
     }
 
     const summary = notes.slice(0, 3).map((note) => `- ${note.text}`).join('\n');
-    return `Here is your current trading knowledge:\n${summary}`;
+    return `Here is your current trading knowledge:\n${summary}\n\nAgent readout: ${buildAgentInsight()}`;
   }
 
   if (input.includes('research') || input.includes('analyze') || input.includes('setup')) {
@@ -353,6 +438,7 @@ function handleTopic(topic) {
 }
 
 function setupPills() {
+  topicPills.innerHTML = '';
   topics.forEach((topic) => {
     const button = document.createElement('button');
     button.className = 'topic-pill';
@@ -427,6 +513,7 @@ webForm.addEventListener('submit', async (event) => {
 });
 
 loadNotes();
+loadAgentState();
 setupPills();
 renderNotes();
 renderDashboard();
