@@ -161,6 +161,15 @@ h1, h2, h3 { margin: 0 0 8px; }
   border: 1px solid rgba(255,255,255,0.06);
 }
 
+.status-bar {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(64, 209, 122, 0.16);
+  color: #dffbf0;
+  font-size: 0.95rem;
+}
+
 .note-form button {
   padding: 10px 14px;
   color: white;

@@ -14,6 +14,7 @@ const webForm = document.getElementById('webForm');
 const webUrlInput = document.getElementById('webUrlInput');
 const webOutput = document.getElementById('webOutput');
 const dashboard = document.getElementById('dashboard');
+const statusBar = document.getElementById('statusBar');
 
 const STORAGE_KEY = 'tradeMindNotes';
 const topics = ['Risk Management', 'Trend Following', 'RSI', 'Position Sizing', 'News Trading'];
@@ -23,6 +24,8 @@ const autoResearchSources = [
   { name: 'Investing.com', url: 'https://www.investing.com/news/stock-market-news' }
 ];
 let notes = [];
+let autoRefreshTimer = null;
+let selfHealingCounter = 0;
 
 function addMessage(text, sender) {
   const message = document.createElement('div');
@@ -84,6 +87,11 @@ function renderDashboard() {
   });
 }
 
+function setStatus(message, isActive = true) {
+  statusBar.textContent = message;
+  statusBar.style.background = isActive ? 'rgba(64, 209, 122, 0.16)' : 'rgba(255, 184, 77, 0.16)';
+}
+
 function rememberLearning(noteText, source) {
   const cleanNote = noteText.trim();
   if (!cleanNote) return;
@@ -91,6 +99,9 @@ function rememberLearning(noteText, source) {
   const exists = notes.some((note) => note.text === cleanNote);
   if (!exists) {
     notes.unshift({ text: cleanNote, source });
+    if (notes.length > 16) {
+      notes = notes.slice(0, 16);
+    }
     saveNotes();
     renderNotes();
     renderDashboard();
@@ -168,6 +179,7 @@ async function learnFromInternet(url) {
 }
 
 async function runAutoResearch() {
+  setStatus('Autonomous mode: scanning public market sources...');
   webOutput.textContent = 'Scanning public market sources...';
   const saved = [];
 
@@ -195,7 +207,44 @@ async function runAutoResearch() {
 
   const summary = saved.slice(0, 3).map((item) => `- ${item.source}`).join('\n');
   webOutput.textContent = `Autonomous research complete. I collected ${saved.length} fresh context notes from public market sources.`;
+  setStatus('Autonomous mode: memory refreshed and ready');
   addMessage(`Autonomous research complete. I collected ${saved.length} fresh context notes.\n${summary}`, 'bot');
+}
+
+function startAutoRefresh() {
+  if (autoRefreshTimer) return;
+  autoRefreshTimer = window.setInterval(() => {
+    selfHealingCounter += 1;
+    setStatus(`Autonomous mode: refreshed ${selfHealingCounter} time(s)`);
+    if (selfHealingCounter % 3 === 0) {
+      runAutoResearch();
+    }
+  }, 1000);
+}
+
+function stopAutoRefresh() {
+  if (autoRefreshTimer) {
+    window.clearInterval(autoRefreshTimer);
+    autoRefreshTimer = null;
+  }
+}
+
+function selfHealUi() {
+  const issues = [];
+  if (!notes.length) {
+    issues.push('No memory yet');
+  }
+  if (!chatMessages.children.length) {
+    issues.push('Chat empty');
+  }
+  if (!document.querySelector('.topic-pill')) {
+    issues.push('Topic pills missing');
+  }
+  if (issues.length) {
+    setStatus(`Self-healing: ${issues.join(', ')}`);
+  } else {
+    setStatus('Self-healing: UI stable');
+  }
 }
 
 function generateTradingSignal(query) {
@@ -362,4 +411,7 @@ loadNotes();
 setupPills();
 renderNotes();
 renderDashboard();
+setStatus('Autonomous mode: standby');
+selfHealUi();
+startAutoRefresh();
 addMessage('I am ready to learn from your trading notes, public web pages, and generate research-based trading signals. My memory will grow as I learn.', 'bot');
