@@ -215,6 +215,7 @@ function startAutoRefresh() {
   if (autoRefreshTimer) return;
   autoRefreshTimer = window.setInterval(() => {
     selfHealingCounter += 1;
+    selfHealUi();
     setStatus(`Autonomous mode: refreshed ${selfHealingCounter} time(s)`);
     if (selfHealingCounter % 3 === 0) {
       runAutoResearch();
