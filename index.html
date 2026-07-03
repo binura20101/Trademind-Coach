@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TradeMind Coach</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="hero-card">
+        <div>
+          <p class="eyebrow">Trading AI for learning and research</p>
+          <h1>TradeMind Coach</h1>
+          <p class="hero-copy">
+            Feed this assistant your trading notes, strategies, and observations.
+            It can also learn from public web pages and build a growing memory of trading context to support research and signal ideas.
+          </p>
+        </div>
+        <div class="hero-actions">
+          <button id="seedButton" class="seed-button" type="button">Load starter notes</button>
+          <button id="autoResearchButton" class="secondary-button" type="button">Auto research</button>
+        </div>
+      </section>
+
+      <section class="panel-grid">
+        <section class="notes-card">
+          <h2>Trading knowledge</h2>
+          <form id="noteForm" class="note-form">
+            <textarea
+              id="noteInput"
+              rows="4"
+              placeholder="Example: Risk management: never risk more than 1-2% of capital per trade."
+            ></textarea>
+            <button type="submit">Save insight</button>
+          </form>
+
+          <section class="signal-card">
+            <h3>Signal engine</h3>
+            <form id="signalForm" class="signal-form">
+              <input
+                id="marketInput"
+                type="text"
+                placeholder="Example: bullish breakout on EURUSD"
+                autocomplete="off"
+              />
+              <button type="submit">Generate signal</button>
+            </form>
+            <div id="signalOutput" class="signal-output">
+              Describe a setup or market and I will generate a simple signal.
+            </div>
+          </section>
+
+          <section class="web-card">
+            <h3>Learn from the internet</h3>
+            <form id="webForm" class="web-form">
+              <input
+                id="webUrlInput"
+                type="url"
+                placeholder="https://example.com"
+                autocomplete="off"
+              />
+              <button type="submit">Learn from URL</button>
+            </form>
+            <div id="webOutput" class="web-output">
+              The assistant can now scan public market sources and turn them into trading context on its own.
+            </div>
+          </section>
+
+          <section class="dashboard-card">
+            <h3>Signal dashboard</h3>
+            <div id="dashboard" class="dashboard"></div>
+          </section>
+
+          <ul id="notesList" class="notes-list"></ul>
+        </section>
+
+        <section class="chat-card">
+          <div class="topic-pills" id="topicPills"></div>
+          <div id="chatMessages" class="chat-messages"></div>
+          <form id="chatForm" class="chat-form">
+            <input
+              id="chatInput"
+              type="text"
+              placeholder="Ask: research trend following or summarize my notes"
+              autocomplete="off"
+              required
+            />
+            <button type="submit">Ask</button>
+          </form>
+        </section>
+      </section>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>
