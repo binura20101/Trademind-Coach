@@ -64,6 +64,16 @@ body {
   cursor: pointer;
 }
 
+.link-button {
+  margin-top: 10px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: #8fdcff;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
 .auth-message {
   margin-top: 12px;
   min-height: 20px;

@@ -25,8 +25,11 @@ const loginUsername = document.getElementById('loginUsername');
 const loginPassword = document.getElementById('loginPassword');
 const registerUsername = document.getElementById('registerUsername');
 const registerPassword = document.getElementById('registerPassword');
-const authModeToggle = document.getElementById('authModeToggle');
 const authMessage = document.getElementById('authMessage');
+const loginView = document.getElementById('loginView');
+const registerView = document.getElementById('registerView');
+const showRegisterButton = document.getElementById('showRegisterButton');
+const showLoginButton = document.getElementById('showLoginButton');
 
 const STORAGE_KEY = 'tradeMindNotes';
 const STATE_KEY = 'tradeMindState';
@@ -128,11 +131,16 @@ function setAuthMessage(message) {
   authMessage.textContent = message;
 }
 
-function toggleAuthMode() {
-  const showRegister = loginForm.hidden;
-  loginForm.hidden = !showRegister;
-  registerForm.hidden = showRegister;
-  authModeToggle.textContent = showRegister ? 'Already have an account? Log in' : 'Create account';
+function showLoginScreen() {
+  loginView.hidden = false;
+  registerView.hidden = true;
+  authMessage.textContent = '';
+}
+
+function showRegisterScreen() {
+  loginView.hidden = true;
+  registerView.hidden = false;
+  authMessage.textContent = '';
 }
 
 function addMessage(text, sender) {
@@ -587,7 +595,8 @@ registerForm.addEventListener('submit', (event) => {
   registerForm.reset();
 });
 
-authModeToggle.addEventListener('click', toggleAuthMode);
+showRegisterButton.addEventListener('click', showRegisterScreen);
+showLoginButton.addEventListener('click', showLoginScreen);
 logoutButton.addEventListener('click', () => {
   currentUser = null;
   localStorage.removeItem(ACTIVE_USER_KEY);
