@@ -163,6 +163,27 @@ h1, h2, h3 { margin: 0 0 8px; }
 .secondary-button { background: linear-gradient(135deg, var(--success), #2f9c69); }
 .ghost-button { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); }
 
+body.evolved-theme {
+  background:
+    radial-gradient(circle at top right, rgba(125, 112, 255, 0.22), transparent 30%),
+    linear-gradient(135deg, #060b16, #131b33 70%);
+}
+
+body.evolved-theme .hero-card,
+body.evolved-theme .notes-card,
+body.evolved-theme .chat-card,
+body.evolved-theme .auth-card {
+  border-color: rgba(125, 112, 255, 0.28);
+  box-shadow: 0 24px 60px rgba(125, 112, 255, 0.16);
+}
+
+body.evolved-theme .topic-pill,
+body.evolved-theme .seed-button,
+body.evolved-theme .secondary-button,
+body.evolved-theme .auth-form button {
+  background: linear-gradient(135deg, #7d70ff, #39d0ff);
+}
+
 .panel-grid {
   display: grid;
   grid-template-columns: minmax(300px, 360px) 1fr;

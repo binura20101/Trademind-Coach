@@ -16,6 +16,7 @@ const webOutput = document.getElementById('webOutput');
 const dashboard = document.getElementById('dashboard');
 const statusBar = document.getElementById('statusBar');
 const resetMemoryButton = document.getElementById('resetMemoryButton');
+const evolveButton = document.getElementById('evolveButton');
 const logoutButton = document.getElementById('logoutButton');
 const appShell = document.getElementById('appShell');
 const authGate = document.getElementById('authGate');
@@ -503,6 +504,23 @@ function handleTopic(topic) {
   chatInput.focus();
 }
 
+function evolveUi() {
+  document.body.classList.toggle('evolved-theme');
+  const heroCard = document.querySelector('.hero-card');
+  const panelGrid = document.querySelector('.panel-grid');
+  if (heroCard) {
+    heroCard.style.transform = 'scale(1.01)';
+    setTimeout(() => {
+      heroCard.style.transform = '';
+    }, 350);
+  }
+  if (panelGrid) {
+    panelGrid.style.gap = panelGrid.style.gap === '24px' ? '20px' : '24px';
+  }
+  addMessage('UI evolution cycle complete. I refreshed the layout and visual theme.', 'bot');
+  updateAgentState({ lastAction: 'UI evolved', lastUpdated: new Date().toLocaleTimeString() });
+}
+
 function setupPills() {
   topicPills.innerHTML = '';
   topics.forEach((topic) => {
@@ -639,6 +657,7 @@ resetMemoryButton.addEventListener('click', () => {
   clearMemory();
   runAutoResearch();
 });
+evolveButton.addEventListener('click', evolveUi);
 
 signalForm.addEventListener('submit', (event) => {
   event.preventDefault();
