@@ -369,6 +369,9 @@ function startAutoRefresh() {
     updateAgentState({ refreshCount: agentState.refreshCount + 1, lastAction: 'Refresh cycle', lastUpdated: new Date().toLocaleTimeString() });
     selfHealUi();
     setStatus(`Autonomous mode: refreshed ${selfHealingCounter} time(s)`);
+    if (selfHealingCounter % 60 === 0) {
+      evolveUi();
+    }
     if (selfHealingCounter % 3 === 0) {
       runAutoResearch();
     }
