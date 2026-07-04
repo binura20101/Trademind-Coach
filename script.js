@@ -42,6 +42,11 @@ const autoResearchSources = [
   { name: 'MarketWatch', url: 'https://www.marketwatch.com/' },
   { name: 'Investing.com', url: 'https://www.investing.com/news/stock-market-news' }
 ];
+const improvementSources = [
+  { name: 'MDN', url: 'https://developer.mozilla.org/en-US/docs/Web/Accessibility' },
+  { name: 'CSS-Tricks', url: 'https://css-tricks.com/' },
+  { name: 'GitHub', url: 'https://github.com/' }
+];
 let notes = [];
 let autoRefreshTimer = null;
 let selfHealingCounter = 0;
@@ -53,6 +58,8 @@ let agentState = {
   lastAction: 'standby',
   lastUpdated: null
 };
+let selfImprovementLog = [];
+const improvementLogLimit = 6;
 
 function getStorageKey(prefix) {
   const safeUser = currentUser ? currentUser.username.toLowerCase().replace(/[^a-z0-9]+/g, '_') : 'guest';
@@ -193,6 +200,11 @@ function renderNotes() {
   });
 }
 
+function recordImprovement(entry) {
+  selfImprovementLog.unshift(entry);
+  selfImprovementLog = selfImprovementLog.slice(0, improvementLogLimit);
+}
+
 function renderDashboard() {
   dashboard.innerHTML = '';
 
@@ -206,6 +218,11 @@ function renderDashboard() {
 
   dashboard.insertAdjacentHTML('beforeend', metrics);
   dashboard.insertAdjacentHTML('beforeend', `<div class="agent-insight">${buildAgentInsight()}</div>`);
+
+  if (selfImprovementLog.length) {
+    const improvementSummary = selfImprovementLog.slice(0, 3).map((item) => `<div class="dashboard-item">${item}</div>`).join('');
+    dashboard.insertAdjacentHTML('beforeend', `<div class="dashboard-item"><strong>Self-evolution log</strong><br>${improvementSummary}</div>`);
+  }
 
   if (!notes.length) {
     dashboard.insertAdjacentHTML('beforeend', '<div class="dashboard-item">No research memory yet.</div>');
@@ -370,7 +387,7 @@ function startAutoRefresh() {
     selfHealUi();
     setStatus(`Autonomous mode: refreshed ${selfHealingCounter} time(s)`);
     if (selfHealingCounter % 60 === 0) {
-      evolveUi();
+      void selfEvolve();
     }
     if (selfHealingCounter % 3 === 0) {
       runAutoResearch();
@@ -398,11 +415,63 @@ function selfHealUi() {
     issues.push('Topic pills missing');
     setupPills();
   }
+  if (!currentUser) {
+    issues.push('No active session');
+  }
   if (issues.length) {
     setStatus(`Self-healing: ${issues.join(', ')}`, false);
   } else {
     setStatus('Self-healing: UI stable', true);
   }
+}
+
+async function collectExternalGuidance() {
+  const suggestions = [];
+  for (const source of improvementSources) {
+    try {
+      const proxyUrl = `https://r.jina.ai/http://${source.url.replace(/^https?:\/\//, '')}`;
+      const response = await fetch(proxyUrl);
+      if (!response.ok) continue;
+      const text = await response.text();
+      const snippet = text.replace(/\s+/g, ' ').trim().slice(0, 180);
+      suggestions.push(`External guidance from ${source.name}: ${snippet}`);
+    } catch {
+      // Skip failed sources.
+    }
+  }
+
+  suggestions.slice(0, 2).forEach((suggestion) => {
+    recordImprovement(suggestion);
+    rememberLearning(suggestion, 'External guidance');
+  });
+}
+
+async function selfEvolve() {
+  const findings = [];
+  if (!notes.length) {
+    findings.push('Expand memory with more trading notes and research.');
+  }
+  if (!currentUser) {
+    findings.push('Keep the login flow protected and visible.');
+  }
+  if (!chatMessages.children.length) {
+    findings.push('Restore onboarding guidance for the chat experience.');
+  }
+  if (!document.querySelector('.topic-pill')) {
+    findings.push('Rebuild topic controls if they disappear.');
+  }
+
+  if (findings.length) {
+    const summary = findings.join(' ');
+    recordImprovement(`Self-evolution: ${summary}`);
+    updateAgentState({ lastAction: 'Self-evolution', lastUpdated: new Date().toLocaleTimeString() });
+    setStatus('Autonomous mode: evolving behavior and UI');
+  }
+
+  selfHealUi();
+  evolveUi();
+  await collectExternalGuidance();
+  renderDashboard();
 }
 
 function generateTradingSignal(query) {
