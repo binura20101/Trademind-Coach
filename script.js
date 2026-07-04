@@ -16,9 +16,22 @@ const webOutput = document.getElementById('webOutput');
 const dashboard = document.getElementById('dashboard');
 const statusBar = document.getElementById('statusBar');
 const resetMemoryButton = document.getElementById('resetMemoryButton');
+const logoutButton = document.getElementById('logoutButton');
+const appShell = document.getElementById('appShell');
+const authGate = document.getElementById('authGate');
+const loginForm = document.getElementById('loginForm');
+const registerForm = document.getElementById('registerForm');
+const loginUsername = document.getElementById('loginUsername');
+const loginPassword = document.getElementById('loginPassword');
+const registerUsername = document.getElementById('registerUsername');
+const registerPassword = document.getElementById('registerPassword');
+const authModeToggle = document.getElementById('authModeToggle');
+const authMessage = document.getElementById('authMessage');
 
 const STORAGE_KEY = 'tradeMindNotes';
 const STATE_KEY = 'tradeMindState';
+const USER_STORAGE_KEY = 'tradeMindUsers';
+const ACTIVE_USER_KEY = 'tradeMindActiveUser';
 const topics = ['Risk Management', 'Trend Following', 'RSI', 'Position Sizing', 'News Trading'];
 const autoResearchSources = [
   { name: 'Reuters', url: 'https://www.reuters.com/world/' },
@@ -28,6 +41,8 @@ const autoResearchSources = [
 let notes = [];
 let autoRefreshTimer = null;
 let selfHealingCounter = 0;
+let currentUser = null;
+let users = [];
 let agentState = {
   researchCount: 0,
   refreshCount: 0,
@@ -35,9 +50,27 @@ let agentState = {
   lastUpdated: null
 };
 
+function getStorageKey(prefix) {
+  const safeUser = currentUser ? currentUser.username.toLowerCase().replace(/[^a-z0-9]+/g, '_') : 'guest';
+  return `${prefix}:${safeUser}`;
+}
+
+function loadUsers() {
+  try {
+    const raw = localStorage.getItem(USER_STORAGE_KEY);
+    users = raw ? JSON.parse(raw) : [];
+  } catch {
+    users = [];
+  }
+}
+
+function saveUsers() {
+  localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(users));
+}
+
 function loadAgentState() {
   try {
-    const raw = localStorage.getItem(STATE_KEY);
+    const raw = localStorage.getItem(getStorageKey(STATE_KEY));
     if (!raw) return;
     const parsed = JSON.parse(raw);
     agentState = { ...agentState, ...parsed };
@@ -48,7 +81,7 @@ function loadAgentState() {
 
 function saveAgentState() {
   try {
-    localStorage.setItem(STATE_KEY, JSON.stringify(agentState));
+    localStorage.setItem(getStorageKey(STATE_KEY), JSON.stringify(agentState));
   } catch (error) {
     console.warn('Could not save agent state:', error);
   }
@@ -80,6 +113,28 @@ function buildAgentInsight() {
   return `Current edge: ${themeLabel}. Latest note: ${recent}`;
 }
 
+function showAuthView() {
+  appShell.hidden = true;
+  authGate.hidden = false;
+  authMessage.textContent = '';
+}
+
+function showAppView() {
+  authGate.hidden = true;
+  appShell.hidden = false;
+}
+
+function setAuthMessage(message) {
+  authMessage.textContent = message;
+}
+
+function toggleAuthMode() {
+  const showRegister = loginForm.hidden;
+  loginForm.hidden = !showRegister;
+  registerForm.hidden = showRegister;
+  authModeToggle.textContent = showRegister ? 'Already have an account? Log in' : 'Create account';
+}
+
 function addMessage(text, sender) {
   const message = document.createElement('div');
   message.className = `message ${sender}`;
@@ -89,7 +144,7 @@ function addMessage(text, sender) {
 }
 
 function loadNotes() {
-  const raw = localStorage.getItem(STORAGE_KEY);
+  const raw = localStorage.getItem(getStorageKey(STORAGE_KEY));
   if (!raw) {
     notes = [];
     return;
@@ -103,8 +158,9 @@ function loadNotes() {
 }
 
 function saveNotes() {
+  if (!currentUser) return;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
+    localStorage.setItem(getStorageKey(STORAGE_KEY), JSON.stringify(notes));
   } catch (error) {
     console.warn('Could not save notes to storage:', error);
   }
@@ -183,7 +239,9 @@ function clearMemory() {
   saveNotes();
   renderNotes();
   renderDashboard();
-  addMessage('My memory has been cleared. I will rebuild it from your next insight or research run.', 'bot');
+  if (currentUser) {
+    addMessage('My memory has been cleared. I will rebuild it from your next insight or research run.', 'bot');
+  }
   updateAgentState({ lastAction: 'Memory cleared', lastUpdated: new Date().toLocaleTimeString() });
   setStatus('Autonomous mode: memory cleared', false);
 }
@@ -448,6 +506,99 @@ function setupPills() {
   });
 }
 
+function initializeWorkspace() {
+  loadNotes();
+  loadAgentState();
+  setupPills();
+  renderNotes();
+  renderDashboard();
+  setStatus('Autonomous mode: standby');
+  selfHealUi();
+  if (!autoRefreshTimer) {
+    startAutoRefresh();
+  }
+  if (!chatMessages.children.length) {
+    addMessage(`I am ready to learn from your trading notes, public web pages, and generate research-based trading signals. My memory will grow as I learn.`, 'bot');
+  }
+}
+
+function restoreSession() {
+  try {
+    const raw = localStorage.getItem(ACTIVE_USER_KEY);
+    if (!raw) return;
+    const user = JSON.parse(raw);
+    if (user?.username) {
+      currentUser = user;
+      showAppView();
+      initializeWorkspace();
+    }
+  } catch {
+    localStorage.removeItem(ACTIVE_USER_KEY);
+  }
+}
+
+function handleLogin(username, password) {
+  const normalized = username.trim().toLowerCase();
+  const user = users.find((entry) => entry.username.toLowerCase() === normalized && entry.password === password);
+  if (!user) {
+    setAuthMessage('Invalid username or password.');
+    return;
+  }
+
+  currentUser = { username: user.username, displayName: user.username };
+  localStorage.setItem(ACTIVE_USER_KEY, JSON.stringify(currentUser));
+  showAppView();
+  initializeWorkspace();
+  setAuthMessage('Welcome back.');
+}
+
+function handleRegister(username, password) {
+  const normalized = username.trim();
+  if (!normalized || password.length < 4) {
+    setAuthMessage('Choose a username and a password with at least 4 characters.');
+    return;
+  }
+
+  const exists = users.some((entry) => entry.username.toLowerCase() === normalized.toLowerCase());
+  if (exists) {
+    setAuthMessage('That username already exists.');
+    return;
+  }
+
+  const user = { username: normalized, password };
+  users.push(user);
+  saveUsers();
+  currentUser = { username: normalized, displayName: normalized };
+  localStorage.setItem(ACTIVE_USER_KEY, JSON.stringify(currentUser));
+  showAppView();
+  initializeWorkspace();
+  setAuthMessage('Account created.');
+}
+
+loginForm.addEventListener('submit', (event) => {
+  event.preventDefault();
+  handleLogin(loginUsername.value, loginPassword.value);
+  loginForm.reset();
+});
+
+registerForm.addEventListener('submit', (event) => {
+  event.preventDefault();
+  handleRegister(registerUsername.value, registerPassword.value);
+  registerForm.reset();
+});
+
+authModeToggle.addEventListener('click', toggleAuthMode);
+logoutButton.addEventListener('click', () => {
+  currentUser = null;
+  localStorage.removeItem(ACTIVE_USER_KEY);
+  notes = [];
+  agentState = { researchCount: 0, refreshCount: 0, lastAction: 'standby', lastUpdated: null };
+  saveNotes();
+  saveAgentState();
+  showAuthView();
+  setAuthMessage('You have been logged out.');
+});
+
 chatForm.addEventListener('submit', (event) => {
   event.preventDefault();
   const userText = chatInput.value.trim();
@@ -512,12 +663,6 @@ webForm.addEventListener('submit', async (event) => {
   }
 });
 
-loadNotes();
-loadAgentState();
-setupPills();
-renderNotes();
-renderDashboard();
-setStatus('Autonomous mode: standby');
-selfHealUi();
-startAutoRefresh();
-addMessage('I am ready to learn from your trading notes, public web pages, and generate research-based trading signals. My memory will grow as I learn.', 'bot');
+loadUsers();
+restoreSession();
+showAuthView();
